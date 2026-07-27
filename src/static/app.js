@@ -3,12 +3,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  let activitiesData = {};
 
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
       const activities = await response.json();
+      activitiesData = activities;
 
       // Clear loading message
       activitiesList.innerHTML = "";
@@ -45,8 +47,29 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
+    const email = document.getElementById("email").value.trim();
     const activity = document.getElementById("activity").value;
+
+    const selectedActivity = activitiesData[activity];
+    const alreadyRegistered =
+      selectedActivity &&
+      Array.isArray(selectedActivity.participants) &&
+      selectedActivity.participants.some((participant) => {
+        if (typeof participant === "string") {
+          return participant.toLowerCase() === email.toLowerCase();
+        }
+        if (participant && typeof participant === "object" && participant.email) {
+          return participant.email.toLowerCase() === email.toLowerCase();
+        }
+        return false;
+      });
+
+    if (alreadyRegistered) {
+      messageDiv.textContent = "Questo studente è già iscritto a questa attività.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -62,6 +85,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
